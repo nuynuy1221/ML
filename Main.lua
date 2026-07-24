@@ -1,13 +1,41 @@
 repeat wait() until game:IsLoaded()
--- 9.46
+-- 10.38
 -- Main Script - Manhwa Legends Auto Farm
 -- รวมทุกฟีเจอร์: GUI → เช็คแมพ → ลบแมพ → Settings → Claim → สุ่ม → Equip → เข้าเล่น
 
 repeat task.wait() until game:IsLoaded()
 
+-- ════════════════════════════════════════════════════════
+-- Config
+-- ════════════════════════════════════════════════════════
+_G.Config = _G.Config or {}
+local Config = {
+    Horst = _G.Config.Horst == true,                     -- เปิด/ปิด Horst API (ต้องเป็น true เท่านั้น)
+    GemTarget = _G.Config.GemTarget or 50000,           -- เป้าหมาย Gems (ทำงานต่อเมื่อ Horst = true)
+    ToggleRender3D = _G.Config.ToggleRender3D or false  -- เปิด/ปิด 3D Rendering
+}
+
+-- โหลด Horst API (เฉพาะเมื่อ Horst = true)
+if Config.Horst then
+    print("📡 Loading Horst API...")
+    local horstLoaded = pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/HorstSpaceX/last_update/main/on_loaded.lua"))()
+    end)
+    if horstLoaded then
+        print("   ✅ Horst API loaded")
+    else
+        warn("   ❌ Failed to load Horst API")
+        Config.Horst = false  -- ปิด Horst ถ้าโหลดไม่สำเร็จ
+    end
+    task.wait(1)
+else
+    print("📡 Horst API disabled")
+end
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("🎮 Manhwa Legends Auto Farm")
@@ -298,8 +326,22 @@ pcall(function()
         if input.KeyCode == Enum.KeyCode.N then
             isGuiVisible = not isGuiVisible
             mainFrame.Visible = isGuiVisible
+
+            -- Toggle 3D Rendering
+            if Config.ToggleRender3D then
+                if isGuiVisible then
+                    RunService:Set3dRenderingEnabled(false)  -- GUI เปิด = 3D ปิด
+                else
+                    RunService:Set3dRenderingEnabled(true)   -- GUI ปิด = 3D เปิด
+                end
+            end
         end
     end)
+
+    -- ตั้งค่า 3D Rendering เริ่มต้น
+    if Config.ToggleRender3D then
+        RunService:Set3dRenderingEnabled(false)  -- เริ่มต้นปิด 3D (GUI เปิดอยู่)
+    end
 end)
 print("   ✅ Stats GUI created")
 task.wait(2)
@@ -798,39 +840,31 @@ else
     -- IN-MAP MODE
     print("🧹 [3/8] Removing in-game objects...")
 
-    -- Keep only essential objects
-    for _, obj in pairs(workspace:GetChildren()) do
-        local keep = obj.Name == "Camera" or obj.Name == "Terrain" or
-                    obj.Name == "RespawnPart" or obj.Name == "ColorblindLabel" or
-                    obj.Name == "Holder"
+    -- Remove workspace objects (keep essential)
+    pcall(function()
+        for _, obj in pairs(workspace:GetChildren()) do
+            local keep = obj.Name == "Camera" or obj.Name == "Terrain" or
+                        obj.Name == "RespawnPart" or obj.Name == "ColorblindLabel" or
+                        obj.Name == "Holder"
 
-        if not keep then
-            pcall(function() obj:Destroy() end)
-        end
-    end
-
-    if workspace:FindFirstChild("Holder") then
-        for _, obj in pairs(workspace.Holder:GetChildren()) do
-            local keep = obj.Name == "Players" or obj.Name == "PreSpawn"
             if not keep then
-                pcall(function() obj:Destroy() end)
+                obj:Destroy()
             end
         end
+    end)
+
+    -- Remove Map children only
+    if workspace:FindFirstChild("Holder") then
+        local holder = workspace.Holder
+        if holder:FindFirstChild("Map") then
+            pcall(function()
+                -- Remove all children of Map
+                for _, obj in pairs(holder.Map:GetChildren()) do
+                    obj:Destroy()
+                end
+            end)
+        end
     end
-
-    -- Remove Terrain children
-    pcall(function()
-        for _, obj in pairs(workspace.Terrain:GetChildren()) do
-            obj:Destroy()
-        end
-    end)
-
-    -- Remove Lighting children
-    pcall(function()
-        for _, obj in pairs(game:GetService("Lighting"):GetChildren()) do
-            obj:Destroy()
-        end
-    end)
 
     -- Remove MaterialService children
     pcall(function()
@@ -840,6 +874,82 @@ else
     end)
 
     print("   ✅ Map cleanup complete")
+
+    -- ════════════════════════════════════════════════════════
+    -- Horst Description Sender
+    -- ════════════════════════════════════════════════════════
+    if Config.Horst and _G.Horst_SetDescription then
+        print("📡 Setting up Horst status sender...")
+
+        local Charm = require(ReplicatedStorage.Packages.Charm)
+        local Atoms = require(ReplicatedStorage.Modules.Atoms)
+
+        local function sendDescription()
+            local success, result = pcall(function()
+                local attributes = Charm.peek(Atoms.Attributes)
+                if attributes then
+                    local level = attributes.Level or 0
+                    local gems = attributes.Gems or 0
+                    local gold = attributes.Gold or 0
+
+                    -- ดึง Trait Reroll
+                    local traitReroll = 0
+                    pcall(function()
+                        local data = Atoms.Data()
+                        if data and data.MaterialsInventory then
+                            traitReroll = data.MaterialsInventory["Trait Reroll"] or 0
+                        end
+                    end)
+
+                    local msg = string.format(
+                        "⭐ Level %d | 💎 Gems %s | 💰 Gold %s | 🔄 RR %d",
+                        level,
+                        tostring(gems):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", ""),
+                        tostring(gold):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", ""),
+                        traitReroll
+                    )
+
+                    _G.Horst_SetDescription(msg)
+                    print("   📤 Status sent:", msg)
+
+                    -- เช็คเป้าหมาย (เฉพาะเมื่อ Horst เปิดอยู่)
+                    if gems >= Config.GemTarget and _G.Horst_AccountChangeDone then
+                        -- ส่ง description ก่อนส่ง DONE
+                        task.wait(0.5)
+                        _G.Horst_SetDescription(msg)
+                        task.wait(0.5)
+
+                        local ok, err = _G.Horst_AccountChangeDone()
+                        if ok then
+                            print(string.format("   ✅ Gem target reached! (%d/%d) - Account marked DONE", gems, Config.GemTarget))
+                            return true  -- สำเร็จ
+                        else
+                            warn("   ❌ Failed to mark done:", err)
+                        end
+                    end
+                end
+            end)
+
+            return success and result
+        end
+
+        -- ส่งทันที 1 รอบ
+        local isDone = sendDescription()
+
+        -- ส่งทุก 30 วินาที (ถ้ายังไม่ DONE)
+        if not isDone then
+            task.spawn(function()
+                while task.wait(30) do
+                    local done = sendDescription()
+                    if done then
+                        break  -- หยุดส่งถ้า DONE แล้ว
+                    end
+                end
+            end)
+        end
+    elseif Config.Horst and not _G.Horst_SetDescription then
+        warn("⚠️  Horst API enabled but _G.Horst_SetDescription not found!")
+    end
 
     -- ════════════════════════════════════════════════════════
     -- [4-7] Skip (already in map)
