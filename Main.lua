@@ -1,5 +1,5 @@
 repeat wait() until game:IsLoaded()
--- 10.47
+-- 10.53
 -- Main Script - Manhwa Legends Auto Farm
 -- รวมทุกฟีเจอร์: GUI → เช็คแมพ → ลบแมพ → Settings → Claim → สุ่ม → Equip → เข้าเล่น
 
@@ -714,7 +714,7 @@ if not isInMap then
                 print(string.format("      [%d/%d] Redeeming: %s", i, #codes, code))
                 ClientNetwork.Player.RedeemCode.Invoke(code)
             end)
-            task.wait(3)  -- รอ 2 วิระหว่างโค้ด
+            task.wait(5)  -- รอ 2 วิระหว่างโค้ด
         end
 
         print("   ✅ Codes redeemed")
