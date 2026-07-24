@@ -1,5 +1,5 @@
 repeat wait() until game:IsLoaded()
--- 10.53
+-- 11.03
 -- Main Script - Manhwa Legends Auto Farm
 -- รวมทุกฟีเจอร์: GUI → เช็คแมพ → ลบแมพ → Settings → Claim → สุ่ม → Equip → เข้าเล่น
 
@@ -918,6 +918,7 @@ else
 
         local Charm = require(ReplicatedStorage.Packages.Charm)
         local Atoms = require(ReplicatedStorage.Modules.Atoms)
+        local HttpService = game:GetService("HttpService")
 
         local function sendDescription()
             local success, result = pcall(function()
@@ -936,6 +937,7 @@ else
                         end
                     end)
 
+                    -- Format message
                     local msg = string.format(
                         "⭐ Level %d | 💎 Gems %s | 💰 Gold %s | 🔄 RR %d",
                         level,
@@ -944,17 +946,27 @@ else
                         traitReroll
                     )
 
-                    _G.Horst_SetDescription(msg)
+                    -- Encode JSON data
+                    local json_data = {
+                        Level = level,
+                        Gems = gems,
+                        Gold = gold,
+                        TraitReroll = traitReroll
+                    }
+                    local encoded_json = HttpService:JSONEncode(json_data)
+
+                    -- ส่ง Status Update พร้อม JSON
+                    _G.Horst_SetDescription(msg, encoded_json)
                     print("   📤 Status sent:", msg)
 
                     -- เช็คเป้าหมาย (เฉพาะเมื่อ Horst เปิดอยู่)
                     if gems >= Config.GemTarget and _G.Horst_AccountChangeDone then
                         -- ส่ง description ก่อนส่ง DONE
-                        task.wait(0.5)
-                        _G.Horst_SetDescription(msg)
-                        task.wait(0.5)
+                        _G.Horst_SetDescription(msg, encoded_json)
 
-                        local ok, err = _G.Horst_AccountChangeDone()
+                        task.wait(15)  -- รอ 15 วิก่อนส่ง DONE
+
+                        local ok, err = pcall(_G.Horst_AccountChangeDone)
                         if ok then
                             print(string.format("   ✅ Gem target reached! (%d/%d) - Account marked DONE", gems, Config.GemTarget))
                             return true  -- สำเร็จ
