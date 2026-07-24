@@ -1,5 +1,5 @@
 repeat wait() until game:IsLoaded()
--- 8.42
+-- 8.48
 -- Main Script - Manhwa Legends Auto Farm
 -- รวมทุกฟีเจอร์: GUI → เช็คแมพ → ลบแมพ → Settings → Claim → สุ่ม → Equip → เข้าเล่น
 
@@ -195,22 +195,28 @@ if not isInMap then
     local hasAllUnits = false
 
     local function checkUnits()
-        local inventory = Atoms.Inventory()
-        if not inventory then return false end
-
-        for _, unitName in ipairs(requiredUnits) do
-            local found = false
-            for _, unit in pairs(inventory) do
-                if unit.Name == unitName then
-                    found = true
-                    break
-                end
-            end
-            if not found then
+        local success, result = pcall(function()
+            local inventory = Atoms.Inventory and Atoms.Inventory()
+            if not inventory or type(inventory) ~= "table" then
                 return false
             end
-        end
-        return true
+
+            for _, unitName in ipairs(requiredUnits) do
+                local found = false
+                for _, unit in pairs(inventory) do
+                    if type(unit) == "table" and unit.Name == unitName then
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    return false
+                end
+            end
+            return true
+        end)
+
+        return success and result or false
     end
 
     hasAllUnits = checkUnits()
@@ -218,8 +224,12 @@ if not isInMap then
     if not hasAllUnits then
         print("   ⚠️  Missing units - starting summon...")
 
-        while not hasAllUnits do
-            print("   🎰 Summoning 10x...")
+        local maxAttempts = 50
+        local attempts = 0
+
+        while not hasAllUnits and attempts < maxAttempts do
+            attempts = attempts + 1
+            print(string.format("   🎰 Summoning 10x (Attempt %d/%d)...", attempts, maxAttempts))
             pcall(function()
                 ClientNetwork.Player.Summon.Invoke("Standard", 10)
             end)
@@ -227,7 +237,11 @@ if not isInMap then
             hasAllUnits = checkUnits()
         end
 
-        print("   ✅ All units obtained")
+        if hasAllUnits then
+            print("   ✅ All units obtained")
+        else
+            warn("   ⚠️  Could not obtain all units after max attempts")
+        end
     else
         print("   ✅ All units already owned")
     end
@@ -250,12 +264,15 @@ if not isInMap then
     task.wait(0.5)
 
     -- Equip required units
-    local inventory = Atoms.Inventory()
-    if inventory then
+    local success, inventory = pcall(function()
+        return Atoms.Inventory and Atoms.Inventory()
+    end)
+
+    if success and inventory and type(inventory) == "table" then
         local slot = 1
         for _, unitName in ipairs(requiredUnits) do
             for unitId, unit in pairs(inventory) do
-                if unit.Name == unitName then
+                if type(unit) == "table" and unit.Name == unitName then
                     pcall(function()
                         ClientNetwork.Player.EquipUnit.Fire(unitId, slot)
                     end)
