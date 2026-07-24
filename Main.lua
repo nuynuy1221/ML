@@ -1,5 +1,5 @@
 repeat wait() until game:IsLoaded()
--- 10.38
+-- 10.45
 -- Main Script - Manhwa Legends Auto Farm
 -- รวมทุกฟีเจอร์: GUI → เช็คแมพ → ลบแมพ → Settings → Claim → สุ่ม → Equip → เข้าเล่น
 
@@ -644,6 +644,30 @@ if not isInMap then
 
     task.wait(0.5)
 
+    -- Claim Daily Login
+    pcall(function()
+        local data = Atoms.Data and Atoms.Data()
+        if data and data.DailyRewards then
+            local dailyRewards = data.DailyRewards
+            local currentDay = dailyRewards.Day
+
+            if type(currentDay) == "number" and not dailyRewards.Completed then
+                local claimed = dailyRewards.Claimed or {}
+                local nextTime = tonumber(dailyRewards.NextDailyTime) or 0
+                local serverTime = workspace:GetServerTimeNow()
+
+                -- เช็คว่าวันนี้ยังไม่ได้รับและเวลาพร้อมแล้ว
+                if not claimed[currentDay] and serverTime >= nextTime then
+                    print(string.format("   🎁 Claiming Daily Login Day %d...", currentDay))
+                    pcall(function()
+                        ClientNetwork.Player.ClaimLogin.Invoke(currentDay)
+                    end)
+                    task.wait(0.3)
+                end
+            end
+        end
+    end)
+
     -- Claim Quests
     pcall(function()
         local quests = Atoms.Quests and Atoms.Quests()
@@ -679,6 +703,22 @@ if not isInMap then
     end)
 
     print("   ✅ Rewards claimed")
+
+    -- Redeem Codes
+    pcall(function()
+        local codes = {"Release", "SorryForDelay", "ThanksForPatience", "DelayLegends", "OneLastDelay"}
+        print("   🎫 Redeeming codes...")
+
+        for i, code in ipairs(codes) do
+            pcall(function()
+                print(string.format("      [%d/%d] Redeeming: %s", i, #codes, code))
+                ClientNetwork.Player.RedeemCode.Invoke(code)
+            end)
+            task.wait(2)  -- รอ 2 วิระหว่างโค้ด
+        end
+
+        print("   ✅ Codes redeemed")
+    end)
 
     -- ════════════════════════════════════════════════════════
     -- [6] Check & Summon Units
@@ -718,24 +758,19 @@ if not isInMap then
     if not hasAllUnits then
         print("   ⚠️  Missing units - starting summon...")
 
-        local maxAttempts = 50
         local attempts = 0
 
-        while not hasAllUnits and attempts < maxAttempts do
+        while not hasAllUnits do
             attempts = attempts + 1
-            print(string.format("   🎰 Summoning 10x (%d/%d)...", attempts, maxAttempts))
+            print(string.format("   🎰 Summoning 1x (Attempt %d)...", attempts))
             pcall(function()
-                ClientNetwork.Player.Summon.Invoke(10)
+                ClientNetwork.Player.Summon.Invoke(1)
             end)
             task.wait(0.3)
             hasAllUnits = checkUnits()
         end
 
-        if hasAllUnits then
-            print("   ✅ All units obtained")
-        else
-            warn("   ⚠️  Could not obtain all units after max attempts")
-        end
+        print(string.format("   ✅ All units obtained after %d attempts", attempts))
     else
         print("   ✅ All units already owned")
     end
