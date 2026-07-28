@@ -3,7 +3,7 @@ repeat wait() until game:IsLoaded()
 if game.PlaceId ~= 142823291 then
     return
 end
--- 11.54
+print("Version 11.54")
 -- Config (ตั้งได้จากภายนอก)
 _G.Config = _G.Config or {}
 local Config = _G.Config
