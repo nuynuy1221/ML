@@ -4,7 +4,7 @@ if game.PlaceId ~= 142823291 then
     return
 end
 
-print("Version 12.39")
+print("Version 3.21")
 -- Config (ตั้งได้จากภายนอก)
 _G.Config = _G.Config or {}
 local Config = _G.Config
@@ -719,11 +719,15 @@ local function sendDescription()
         _G.Horst_AccountChangeDone()
         questCompleted = true
 
-        -- หลังส่ง DONE แล้ว ส่ง Description ทันทีและส่งต่อทุกๆ 3 วินาที
-        while true do
-            sendDescription()
-            task.wait(3)
-        end
+        -- หลังส่ง DONE แล้ว ส่ง Description ทันทีและส่งต่อทุกๆ 3 วินาที (แยก thread)
+        task.spawn(function()
+            while true do
+                sendDescription()
+                task.wait(3)
+            end
+        end)
+
+        return
     end
 
     -- ส่ง Description ปกติ (ยังไม่เสร็จ)
@@ -851,6 +855,17 @@ local function openSummerBoxes()
     end
 end
 
+-- เช็คจำนวนคนในเซิร์ฟเวอร์ตลอดเวลา ถ้าน้อยกว่า 5 คนให้เตะออกทันที (แยก thread)
+task.spawn(function()
+    while true do
+        if #Players:GetPlayers() < 5 then
+            player:Kick("Server has fewer than 5 players")
+            break
+        end
+        task.wait(1)
+    end
+end)
+
 -- ส่ง Description ครั้งแรกก่อนเริ่มลูป
 sendDescription()
 lastDescriptionTime = tick()
@@ -880,8 +895,9 @@ while true do
             sendDescription()  -- ส่ง Description + DONE
         end
 
-        -- เช็คว่าถึงเวลาส่ง Description ตามปกติหรือยัง (ทุก 30 วิ) - ทำงานต่อแม้ว่า Quest เสร็จแล้ว
-        if tick() - lastDescriptionTime >= DESCRIPTION_INTERVAL then
+        -- เช็คว่าถึงเวลาส่ง Description ตามปกติหรือยัง (ทุก 30 วิ)
+        -- ถ้าส่ง DONE ไปแล้ว ตัว task.spawn (ทุก 3 วิ) จะรับหน้าที่นี้ต่อ
+        if not questCompleted and tick() - lastDescriptionTime >= DESCRIPTION_INTERVAL then
             sendDescription()
             lastDescriptionTime = tick()
         end
