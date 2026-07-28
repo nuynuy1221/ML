@@ -4,7 +4,7 @@ if game.PlaceId ~= 142823291 then
     return
 end
 
-print("Version 12.32")
+print("Version 12.39")
 -- Config (ตั้งได้จากภายนอก)
 _G.Config = _G.Config or {}
 local Config = _G.Config
@@ -713,7 +713,7 @@ local function sendDescription()
         _G.Horst_SetDescription(description)
 
         -- รอให้ Description ส่งเสร็จก่อนส่ง DONE
-        task.wait(30)
+        task.wait(7)
 
         -- ส่ง DONE
         _G.Horst_AccountChangeDone()
