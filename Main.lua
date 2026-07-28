@@ -3,7 +3,8 @@ repeat wait() until game:IsLoaded()
 if game.PlaceId ~= 142823291 then
     return
 end
-print("Version 11.54")
+
+print("Version 12.01")
 -- Config (ตั้งได้จากภายนอก)
 _G.Config = _G.Config or {}
 local Config = _G.Config
@@ -708,11 +709,6 @@ local function sendDescription()
             description = description .. " • Inv : " .. table.concat(itemNames, ", ")
         end
 
-        -- Debug: แสดงข้อมูลก่อนส่ง
-        print("[DEBUG] ก่อนส่ง DONE - Description:", description)
-        print("[DEBUG] Config.Horst:", Config.Horst)
-        print("[DEBUG] _G.Horst_SetDescription exists:", _G.Horst_SetDescription ~= nil)
-
         -- ส่ง Description ก่อน
         _G.Horst_SetDescription(description)
 
@@ -720,7 +716,6 @@ local function sendDescription()
         task.wait(30)
 
         -- ส่ง DONE
-        print("[DEBUG] ส่ง DONE แล้ว")
         _G.Horst_AccountChangeDone()
         questCompleted = true
         return
