@@ -4,7 +4,7 @@ if game.PlaceId ~= 142823291 then
     return
 end
 
-print("Version 12.01")
+print("Version 12.32")
 -- Config (ตั้งได้จากภายนอก)
 _G.Config = _G.Config or {}
 local Config = _G.Config
@@ -718,7 +718,12 @@ local function sendDescription()
         -- ส่ง DONE
         _G.Horst_AccountChangeDone()
         questCompleted = true
-        return
+
+        -- หลังส่ง DONE แล้ว ส่ง Description ทันทีและส่งต่อทุกๆ 3 วินาที
+        while true do
+            sendDescription()
+            task.wait(3)
+        end
     end
 
     -- ส่ง Description ปกติ (ยังไม่เสร็จ)
