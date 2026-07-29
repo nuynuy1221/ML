@@ -4,7 +4,7 @@ if game.PlaceId ~= 142823291 then
     return
 end
 
-print("Version 3.21")
+print("Version 3.45")
 -- Config (ตั้งได้จากภายนอก)
 _G.Config = _G.Config or {}
 local Config = _G.Config
@@ -855,11 +855,38 @@ local function openSummerBoxes()
     end
 end
 
--- เช็คจำนวนคนในเซิร์ฟเวอร์ตลอดเวลา ถ้าน้อยกว่า 5 คนให้เตะออกทันที (แยก thread)
+-- ฟังก์ชัน Hop Server
+local function hopServer()
+    local TeleportService = game:GetService("TeleportService")
+    local Http = game:GetService("HttpService")
+
+    local success, result = pcall(function()
+        local servers = Http:JSONDecode(game:HttpGet(
+            "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        ))
+
+        if servers and servers.data then
+            for _, server in ipairs(servers.data) do
+                if server.id ~= game.JobId and server.playing < server.maxPlayers then
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, player)
+                    return
+                end
+            end
+        end
+    end)
+
+    if not success then
+        warn("[DEBUG] Hop Server Error:", tostring(result))
+        -- ถ้า hop ไม่สำเร็จ ให้ลอง teleport ปกติ
+        TeleportService:Teleport(game.PlaceId, player)
+    end
+end
+
+-- เช็คจำนวนคนในเซิร์ฟเวอร์ตลอดเวลา ถ้าน้อยกว่า 5 คนให้ hop server ทันที (แยก thread)
 task.spawn(function()
     while true do
         if #Players:GetPlayers() < 5 then
-            player:Kick("Server has fewer than 5 players")
+            hopServer()
             break
         end
         task.wait(1)
