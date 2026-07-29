@@ -4,7 +4,7 @@ if game.PlaceId ~= 142823291 then
     return
 end
 
-print("Version 3.50")
+print("Version 3.51")
 -- Config (ตั้งได้จากภายนอก)
 _G.Config = _G.Config or {}
 local Config = _G.Config
@@ -868,8 +868,8 @@ local function hopServer()
 
             if servers and servers.data then
                 for _, server in ipairs(servers.data) do
-                    -- เช็คว่าไม่ใช่เซิร์ฟปัจจุบัน, มีที่ว่าง, และไม่เต็ม
-                    if server.id ~= game.JobId and server.playing > 0 and server.playing < server.maxPlayers - 1 then
+                    -- เช็คว่าไม่ใช่เซิร์ฟปัจจุบัน, มีคนอย่างน้อย 5 คน, และไม่เต็ม
+                    if server.id ~= game.JobId and server.playing >= 5 and server.playing < server.maxPlayers - 1 then
                         local teleportSuccess, teleportError = pcall(function()
                             TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, player)
                         end)
