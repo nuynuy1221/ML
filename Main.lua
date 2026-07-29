@@ -4,7 +4,7 @@ if game.PlaceId ~= 142823291 then
     return
 end
 
-print("Version 3.51")
+print("Version 4.02")
 -- Config (ตั้งได้จากภายนอก)
 _G.Config = _G.Config or {}
 local Config = _G.Config
@@ -12,6 +12,7 @@ local Config = _G.Config
 -- ค่าพื้นฐาน
 Config.Horst = Config.Horst ~= nil and Config.Horst or false
 Config.ToggleRender3D = Config.ToggleRender3D ~= nil and Config.ToggleRender3D or false
+Config.HopBagFull = Config.HopBagFull ~= nil and Config.HopBagFull or false
 
 -- ถ้าเปิด Horst ให้โหลด script
 if Config.Horst then
@@ -858,38 +859,20 @@ end
 -- ฟังก์ชัน Hop Server
 local function hopServer()
     local TeleportService = game:GetService("TeleportService")
-    local Http = game:GetService("HttpService")
 
     while true do
         local success, result = pcall(function()
-            local servers = Http:JSONDecode(game:HttpGet(
-                "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
-            ))
-
-            if servers and servers.data then
-                for _, server in ipairs(servers.data) do
-                    -- เช็คว่าไม่ใช่เซิร์ฟปัจจุบัน, มีคนอย่างน้อย 5 คน, และไม่เต็ม
-                    if server.id ~= game.JobId and server.playing >= 5 and server.playing < server.maxPlayers - 1 then
-                        local teleportSuccess, teleportError = pcall(function()
-                            TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, player)
-                        end)
-
-                        if teleportSuccess then
-                            return true
-                        else
-                            warn("[DEBUG] Teleport failed:", tostring(teleportError))
-                        end
-                    end
-                end
-            end
+            -- ใช้ TeleportService:Teleport() ธรรมดา จะสุ่มหาเซิร์ฟให้เอง
+            TeleportService:Teleport(game.PlaceId, player)
         end)
 
-        if not success then
-            warn("[DEBUG] Hop Server Error:", tostring(result))
+        if success then
+            break
+        else
+            warn("[DEBUG] Teleport failed:", tostring(result))
+            -- รอก่อนลองใหม่
+            task.wait(3)
         end
-
-        -- รอก่อนลองใหม่
-        task.wait(2)
     end
 end
 
@@ -1033,7 +1016,12 @@ while true do
         if coinAmount >= 40 then
                 -- เต็มแล้ว - Reset ตัวละครเพื่อกลับ Lobby
                 character:BreakJoints()
-                wait(5)
+                wait(1)
+
+                -- ถ้าเปิด HopBagFull ให้ hop server หลัง reset
+                if Config.HopBagFull then
+                    hopServer()
+                end
             else
                 -- ยังไม่เต็ม - ฟาร์มตามปกติ
 
