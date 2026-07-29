@@ -4,7 +4,7 @@ if game.PlaceId ~= 142823291 then
     return
 end
 
-print("Version 3.45")
+print("Version 3.50")
 -- Config (ตั้งได้จากภายนอก)
 _G.Config = _G.Config or {}
 local Config = _G.Config
@@ -860,25 +860,36 @@ local function hopServer()
     local TeleportService = game:GetService("TeleportService")
     local Http = game:GetService("HttpService")
 
-    local success, result = pcall(function()
-        local servers = Http:JSONDecode(game:HttpGet(
-            "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
-        ))
+    while true do
+        local success, result = pcall(function()
+            local servers = Http:JSONDecode(game:HttpGet(
+                "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+            ))
 
-        if servers and servers.data then
-            for _, server in ipairs(servers.data) do
-                if server.id ~= game.JobId and server.playing < server.maxPlayers then
-                    TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, player)
-                    return
+            if servers and servers.data then
+                for _, server in ipairs(servers.data) do
+                    -- เช็คว่าไม่ใช่เซิร์ฟปัจจุบัน, มีที่ว่าง, และไม่เต็ม
+                    if server.id ~= game.JobId and server.playing > 0 and server.playing < server.maxPlayers - 1 then
+                        local teleportSuccess, teleportError = pcall(function()
+                            TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, player)
+                        end)
+
+                        if teleportSuccess then
+                            return true
+                        else
+                            warn("[DEBUG] Teleport failed:", tostring(teleportError))
+                        end
+                    end
                 end
             end
-        end
-    end)
+        end)
 
-    if not success then
-        warn("[DEBUG] Hop Server Error:", tostring(result))
-        -- ถ้า hop ไม่สำเร็จ ให้ลอง teleport ปกติ
-        TeleportService:Teleport(game.PlaceId, player)
+        if not success then
+            warn("[DEBUG] Hop Server Error:", tostring(result))
+        end
+
+        -- รอก่อนลองใหม่
+        task.wait(2)
     end
 end
 
